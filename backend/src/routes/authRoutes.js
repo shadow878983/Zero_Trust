@@ -12,7 +12,7 @@ const router = express.Router();
 const registerSchema = z.strictObject({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().email().max(254),
-  password: z.string().min(8).refine(
+  password: z.string().min(12, 'Password must be at least 12 characters').refine(
     (value) => Buffer.byteLength(value, 'utf8') <= 72,
     'Password must be at most 72 bytes'
   ),
@@ -36,6 +36,15 @@ const changePasswordSchema = z.strictObject({
     'New password must be at least 12 characters and at most 72 bytes'
   ),
 });
+
+const profileUpdateSchema = z.strictObject({
+  currentPassword: z.string().min(1).refine(
+    (value) => Buffer.byteLength(value, 'utf8') <= 72,
+    'Password must be at most 72 bytes'
+  ),
+  name: z.string().trim().min(2).max(80).optional(),
+  email: z.string().trim().email().max(254).optional(),
+}).refine((data) => data.name !== undefined || data.email !== undefined, 'Provide a new name or email');
 
 function invalidInput(res, error) {
   return res.status(400).json({
@@ -127,6 +136,50 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.patch('/profile', requireAuth, async (req, res) => {
+  const parsed = profileUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return invalidInput(res, parsed.error);
+
+  try {
+    const user = await User.findById(req.user._id).select('+passwordHash');
+    if (!user || !(await bcrypt.compare(parsed.data.currentPassword, user.passwordHash))) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    const updates = {};
+    if (parsed.data.name !== undefined && parsed.data.name !== user.name) updates.name = parsed.data.name;
+    const nextEmail = parsed.data.email?.toLowerCase();
+    if (nextEmail !== undefined && nextEmail !== user.email) updates.email = nextEmail;
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: 'No profile changes were provided' });
+    }
+
+    const previousValues = Object.fromEntries(Object.keys(updates).map((field) => [field, user[field]]));
+    Object.assign(user, updates);
+    await user.save();
+    await AuditLog.create({
+      userId: user._id,
+      action: 'user_update',
+      result: 'allow',
+      reason: 'profile_updated',
+      metadata: {
+        targetUserId: user.id,
+        changedFields: Object.keys(updates),
+        previousValues,
+        newValues: updates,
+      },
+    });
+
+    return res.status(200).json({ success: true, data: { user: publicUser(user) } });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'An account with that email already exists' });
+    }
+    console.error(`Profile update failed: ${error.message}`);
+    return res.status(500).json({ success: false, message: 'Could not update your profile' });
+  }
+});
+
 router.get('/me', requireAuth, (req, res) => {
   return res.status(200).json({ success: true, data: { user: publicUser(req.user) } });
 });
@@ -152,7 +205,7 @@ router.post('/change-password', requireAuth, async (req, res) => {
       action: 'user_update',
       result: 'allow',
       reason: 'password_changed',
-      metadata: { changedFields: ['password'] },
+      metadata: { targetUserId: user.id, changedFields: ['password'] },
     });
 
     return res.status(200).json({

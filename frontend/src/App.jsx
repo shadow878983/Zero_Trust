@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { Activity, Bell, CircleAlert, Files, KeyRound, LayoutDashboard, LogOut, Menu, ScrollText, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, Bell, CircleAlert, Files, KeyRound, LayoutDashboard, LogOut, Menu, ScrollText, ShieldCheck, UserRound, Users, X } from 'lucide-react';
 import { api } from './api/client';
 import { useAuth } from './context/AuthContext';
 import AuthScreen from './components/AuthScreen';
@@ -7,11 +7,13 @@ import DocumentsPage from './pages/DocumentsPage';
 import UsersPage from './pages/UsersPage';
 import AccessPage from './pages/AccessPage';
 import AuditPage from './pages/AuditPage';
+import ProfilePage from './pages/ProfilePage';
 import { EmptyState, PageHeading, Spinner } from './components/ui';
 
 const baseNav = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'documents', label: 'Documents', icon: Files },
+  { id: 'profile', label: 'My account', icon: UserRound },
 ];
 const adminNav = [
   { id: 'access', label: 'Access grants', icon: KeyRound },
@@ -65,7 +67,7 @@ function OverviewPage({ user, onNavigate }) {
 }
 
 export default function App() {
-  const { user, loading, login, register, logout } = useAuth();
+  const { user, loading, login, register, logout, updateUser } = useAuth();
   const [active, setActive] = useState('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -104,6 +106,7 @@ export default function App() {
       <main className="main-content">
         {active === 'overview' && <OverviewPage user={user} onNavigate={setActive} />}
         {active === 'documents' && <DocumentsPage user={user} notify={notify} />}
+        {active === 'profile' && <ProfilePage user={user} updateUser={updateUser} notify={notify} onLogout={logout} />}
         {active === 'access' && isAdmin && <AccessPage notify={notify} />}
         {active === 'users' && isAdmin && <UsersPage user={user} notify={notify} />}
         {active === 'audit' && isAdmin && <AuditPage notify={notify} />}

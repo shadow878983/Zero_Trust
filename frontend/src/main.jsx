@@ -6,6 +6,7 @@ import './styles.css';
 import './password.css';
 import './preview.css';
 import './audit.css';
+import './profile.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
