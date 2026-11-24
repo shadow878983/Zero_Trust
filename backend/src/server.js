@@ -2,7 +2,12 @@
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
+const { rateLimit } = require('express-rate-limit');
 const { connectDatabase } = require('./config/database');
+const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const documentRoutes = require('./routes/documentRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -22,6 +27,23 @@ app.get('/api/health', (_req, res) => {
     database: databaseConnected ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
   });
+});
+
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts. Try again later.' },
+});
+
+app.use('/api/auth', authRateLimit, authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/documents', permissionRoutes);
+
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
 async function startServer() {
