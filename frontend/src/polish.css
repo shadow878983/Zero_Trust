@@ -57,6 +57,7 @@ body{background:radial-gradient(ellipse at 83% 0%,#1233416b 0,transparent 32%),r
 .profile-card{box-shadow:0 10px 32px #02091125,inset 0 1px #ffffff08}
 .profile-section-heading{background:linear-gradient(100deg,#142534,#11212d)}
 .toast{backdrop-filter:blur(10px);box-shadow:0 12px 40px #0007}
+.metadata-only-label{align-self:center;color:#8599a7;font-size:9px;padding:0 5px}
 ::selection{background:#49d9b74a;color:#f5ffff}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-track{background:#0c1822}

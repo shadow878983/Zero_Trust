@@ -1,6 +1,6 @@
 ﻿const mongoose = require('mongoose');
 
-const AUDIT_ACTIONS = ['read', 'download', 'manage', 'upload', 'grant', 'revoke', 'login', 'logout', 'user_update'];
+const AUDIT_ACTIONS = ['read', 'preview', 'download', 'manage', 'upload', 'grant', 'revoke', 'login', 'logout', 'user_update'];
 
 const auditLogSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -38,6 +38,7 @@ The API rejects unsupported fields and invalid role/department values. An Admin 
 - `POST /api/documents` accepts multipart fields `file`, `title`, `description`, `department`, and `classification`. Upload is Admin-only. PDF and plain text files are allowed, up to 10 MB.
 - `GET /api/documents` lists only documents the current user can read.
 - `GET /api/documents/:id` returns authorized document metadata.
+- `GET /api/documents/:id/preview` rechecks preview authorization and streams a PDF/TXT inline.
 - `GET /api/documents/:id/download` rechecks current download authorization and streams the private file.
 
 Files are stored under `backend/storage` using generated filenames. The folder is outside the frontend's public assets and is never mounted as a static route.
@@ -53,7 +54,8 @@ Current policy defaults:
 - Faculty and Department Heads can read and download Internal documents in their department.
 - Department Heads can manage documents in their department.
 - Confidential and Restricted documents require an active explicit grant for non-owners and non-Admins.
-- Read grants permit reading; Download grants permit reading and downloading; Manage grants permit all three actions. Expiry and revocation are checked from MongoDB at request time.
+- Read grants permit listing and viewing document metadata, but do not permit preview or download. Download grants permit preview and download; Manage grants permit all three actions. Expiry and revocation are checked from MongoDB at request time.
+- Public-document and same-department Internal-document policy can independently permit preview and download, even without an explicit grant.
 
 ## Grant management
 

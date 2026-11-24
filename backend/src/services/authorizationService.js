@@ -4,9 +4,10 @@ const Document = require('../models/Document');
 const Permission = require('../models/Permission');
 const AuditLog = require('../models/AuditLog');
 
-const ACTIONS = ['read', 'download', 'manage'];
+const ACTIONS = ['read', 'preview', 'download', 'manage'];
 const MATCHING_GRANT_TYPES = {
   read: ['Read', 'Download', 'Manage'],
+  preview: ['Download', 'Manage'],
   download: ['Download', 'Manage'],
   manage: ['Manage'],
 };
@@ -22,6 +23,8 @@ async function authorizeDocumentRequest({ actor, documentId, action }) {
   let currentUser = null;
   let document = null;
   let allowed = false;
+  let canPreview = false;
+  let canDownload = false;
   let reason = 'user_not_found';
   let matchingGrants = [];
 
@@ -39,9 +42,13 @@ async function authorizeDocumentRequest({ actor, documentId, action }) {
 
     if (currentUser.role === 'Admin') {
       allowed = true;
+      canPreview = true;
+      canDownload = true;
       reason = 'role_admin';
     } else if (isOwner) {
       allowed = true;
+      canPreview = true;
+      canDownload = true;
       reason = 'document_owner';
     } else {
       const grants = await Permission.find({ userId: currentUser._id, documentId: document._id })
@@ -49,6 +56,17 @@ async function authorizeDocumentRequest({ actor, documentId, action }) {
         .lean();
       matchingGrants = grants.filter((grant) => MATCHING_GRANT_TYPES[action].includes(grant.permissionType));
       const now = Date.now();
+      const activeContentGrant = grants.some((grant) =>
+        ['Download', 'Manage'].includes(grant.permissionType)
+        && !grant.revoked
+        && grant.expiresAt.getTime() > now
+      );
+      const policyAllowsContent = document.classification === 'Public'
+        || (document.classification === 'Internal'
+          && sameDepartment
+          && ['Faculty', 'Department Head'].includes(currentUser.role));
+      canPreview = activeContentGrant || policyAllowsContent;
+      canDownload = canPreview;
       const activeGrant = matchingGrants.find((grant) => !grant.revoked && grant.expiresAt.getTime() > now);
 
       if (activeGrant) {
@@ -68,6 +86,10 @@ async function authorizeDocumentRequest({ actor, documentId, action }) {
       ) {
         allowed = true;
         reason = 'internal_same_department';
+      } else if (action === 'preview' && grants.some((grant) =>
+        grant.permissionType === 'Read' && !grant.revoked && grant.expiresAt.getTime() > now
+      )) {
+        reason = 'read_permission_does_not_allow_preview';
       } else if (matchingGrants.length > 0) {
         const latestGrant = matchingGrants[0];
         reason = latestGrant.revoked ? 'permission_revoked' : 'permission_expired';
@@ -98,7 +120,7 @@ async function authorizeDocumentRequest({ actor, documentId, action }) {
     },
   });
 
-  return { allowed, reason, document };
+  return { allowed, reason, document, canPreview, canDownload };
 }
 
 module.exports = { authorizeDocumentRequest, ACTIONS };

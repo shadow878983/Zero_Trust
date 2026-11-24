@@ -14,7 +14,7 @@ export default function ShareDialog({ document, onClose, notify }) {
   const min = new Date(Date.now() + 60000).toISOString().slice(0, 16);
   return <Modal title="Grant document access" onClose={onClose}><p className="modal-intro">Grant access to <strong>{document.title}</strong>. Current policy will still be checked for every request.</p><form className="form-stack" onSubmit={submit}>
     <label className="form-label">Campus user<select required value={userId} onChange={(e) => setUserId(e.target.value)}><option value="">Choose a user</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.email} ({u.role})</option>)}</select></label>
-    <label className="form-label">Permission<select value={permissionType} onChange={(e) => setPermissionType(e.target.value)}><option>Read</option><option>Download</option><option>Manage</option></select></label>
+    <label className="form-label">Permission<select value={permissionType} onChange={(e) => setPermissionType(e.target.value)}><option>Read</option><option>Download</option><option>Manage</option></select><small>Read shows document details only. Download and Manage grants also allow preview. Public or department policy may independently allow document access.</small></label>
     <label className="form-label">Expires at<input type="datetime-local" min={min} value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} required /></label>
     <div className="modal-actions"><button type="button" className="button button-quiet" onClick={onClose}>Cancel</button><button className="button button-primary" disabled={busy || !userId}>{busy ? 'Saving…' : 'Grant access'}</button></div>
   </form></Modal>;

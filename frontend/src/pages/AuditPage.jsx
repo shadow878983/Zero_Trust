@@ -3,7 +3,7 @@ import { Activity, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { api } from '../api/client';
 import { EmptyState, getError, PageHeading, Spinner, StatusBadge, dateLabel } from '../components/ui';
 
-const actions = ['login', 'logout', 'upload', 'read', 'download', 'grant', 'revoke', 'user_update'];
+const actions = ['login', 'logout', 'upload', 'read', 'preview', 'download', 'grant', 'revoke', 'user_update'];
 
 function changeSummary(log) {
   if (log.action !== 'user_update') return '—';

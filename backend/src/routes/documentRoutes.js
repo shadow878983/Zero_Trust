@@ -274,7 +274,11 @@ router.get('/', requireAuth, async (req, res) => {
         documentId: candidate._id,
         action: 'read',
       });
-      if (decision.allowed) documents.push(publicDocument(decision.document));
+      if (decision.allowed) documents.push({
+        ...publicDocument(decision.document),
+        canPreview: decision.canPreview,
+        canDownload: decision.canDownload,
+      });
     }
 
     return res.status(200).json({ success: true, data: { documents } });
@@ -286,7 +290,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.get('/:id/preview', requireAuth, async (req, res) => {
   try {
-    const document = await authorizedDocument(req, res, 'read');
+    const document = await authorizedDocument(req, res, 'preview');
     if (!document) return;
 
     const storedDocument = await Document.findById(document._id).select('+storagePath');
@@ -364,9 +368,25 @@ router.get('/:id/download', requireAuth, async (req, res) => {
 
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const document = await authorizedDocument(req, res, 'read');
-    if (!document) return;
-    return res.status(200).json({ success: true, data: { document: publicDocument(document) } });
+    const decision = await authorizeDocumentRequest({ actor: req.user, documentId: req.params.id, action: 'read' });
+    if (!decision.allowed) {
+      const status = decision.reason === 'document_not_found' ? 404 : 403;
+      return res.status(status).json({
+        success: false,
+        message: status === 404 ? 'Document not found' : 'Access denied',
+        reason: decision.reason,
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      data: {
+        document: {
+          ...publicDocument(decision.document),
+          canPreview: decision.canPreview,
+          canDownload: decision.canDownload,
+        },
+      },
+    });
   } catch (error) {
     console.error(`Document detail request failed: ${error.message}`);
     return res.status(500).json({ success: false, message: 'Could not load document' });
