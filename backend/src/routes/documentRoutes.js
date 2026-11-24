@@ -284,6 +284,44 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/:id/preview', requireAuth, async (req, res) => {
+  try {
+    const document = await authorizedDocument(req, res, 'read');
+    if (!document) return;
+
+    const storedDocument = await Document.findById(document._id).select('+storagePath');
+    if (!storedDocument || !storedDocument.storagePath || path.basename(storedDocument.storagePath) !== storedDocument.storagePath) {
+      return res.status(404).json({ success: false, message: 'Document file not found' });
+    }
+
+    const filePath = path.resolve(storageDirectory, storedDocument.storagePath);
+    if (path.dirname(filePath) !== storageDirectory) {
+      return res.status(404).json({ success: false, message: 'Document file not found' });
+    }
+    try {
+      await fs.promises.access(filePath, fs.constants.R_OK);
+    } catch {
+      return res.status(404).json({ success: false, message: 'Document file not found' });
+    }
+
+    res.set({
+      'Cache-Control': 'private, no-store',
+      'Content-Type': storedDocument.mimeType,
+      'Content-Disposition': 'inline',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.sendFile(filePath, (error) => {
+      if (error && !res.headersSent) {
+        console.error(`Document preview failed: ${error.message}`);
+        res.status(404).json({ success: false, message: 'Document file not found' });
+      }
+    });
+  } catch (error) {
+    console.error(`Document authorization or preview failed: ${error.message}`);
+    return res.status(500).json({ success: false, message: 'Could not preview this document' });
+  }
+});
+
 router.get('/:id/download', requireAuth, async (req, res) => {
   try {
     const document = await authorizedDocument(req, res, 'download');

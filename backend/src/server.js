@@ -2,7 +2,7 @@
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
-const { rateLimit } = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { connectDatabase } = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -32,10 +32,12 @@ app.get('/api/health', (_req, res) => {
 const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  keyGenerator: (req) => ipKeyGenerator(req.ip, 56),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many authentication attempts. Try again later.' },
 });
+app.locals.authRateLimit = authRateLimit;
 
 app.use('/api/auth', authRateLimit, authRoutes);
 app.use('/api/admin', adminRoutes);

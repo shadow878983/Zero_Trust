@@ -86,6 +86,13 @@ router.get('/audit-logs', async (req, res) => {
         .populate('userId', 'name email role department')
         .populate('documentId', 'title department classification'),
     ]);
+    const targetUserIds = [...new Set(logs
+      .map((log) => String(log.metadata?.targetUserId || ''))
+      .filter((id) => mongoose.isValidObjectId(id)))];
+    const targetUsers = targetUserIds.length
+      ? await User.find({ _id: { $in: targetUserIds } }).select('name email')
+      : [];
+    const targetUserById = new Map(targetUsers.map((target) => [target.id, target]));
 
     return res.status(200).json({
       success: true,
@@ -94,6 +101,13 @@ router.get('/audit-logs', async (req, res) => {
           id: log.id,
           user: log.userId
             ? { id: String(log.userId._id || log.userId), name: log.userId.name, email: log.userId.email, role: log.userId.role, department: log.userId.department }
+            : null,
+          affectedUser: targetUserById.has(String(log.metadata?.targetUserId || ''))
+            ? {
+                id: String(log.metadata.targetUserId),
+                name: targetUserById.get(String(log.metadata.targetUserId)).name,
+                email: targetUserById.get(String(log.metadata.targetUserId)).email,
+              }
             : null,
           document: log.documentId
             ? { id: String(log.documentId._id || log.documentId), title: log.documentId.title, department: log.documentId.department, classification: log.documentId.classification }

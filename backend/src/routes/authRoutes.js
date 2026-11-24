@@ -1,5 +1,6 @@
 ﻿const express = require('express');
 const bcrypt = require('bcryptjs');
+const { ipKeyGenerator } = require('express-rate-limit');
 const { z } = require('zod');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
@@ -114,6 +115,8 @@ router.post('/login', async (req, res) => {
       reason: 'credentials_valid',
       metadata: { role: user.role },
     });
+    // A valid login clears this client's accumulated authentication-attempt count.
+    req.app.locals.authRateLimit?.resetKey(ipKeyGenerator(req.ip, 56));
     return res.status(200).json({
       success: true,
       data: { user: publicUser(user), token },
